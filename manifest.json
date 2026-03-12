@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "PrivacyGuard AI Protector",
+  "version": "1.0",
+  "description": "Prevents sensitive data leakage to LLMs.",
+  "permissions": ["storage", "activeTab"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://aistudio.google.com/*",
+        "https://gemini.google.com/app?utm_source=app_launcher&utm_medium=owned&utm_campaign=base_all*",
+        "https://aistudio.google.com/prompts/new_chat"
+      ],
+      "js": ["content.js"],
+      "css": ["style.css"]
+    }
+  ],
+  "action": {
+    "default_title": "Status"
+  }
+}
