@@ -72,6 +72,7 @@ function showModernWarning(analysis, targetElement) {
 }
 
 // 4. Main Event Interceptor
+// 4. Main Event Interceptor
 window.addEventListener('keydown', (event) => {
     const isTextArea = event.target.tagName === 'TEXTAREA' || 
                        event.target.role === 'textbox' || 
@@ -82,19 +83,40 @@ window.addEventListener('keydown', (event) => {
         const analysis = scanAndRedact(userInput);
 
         if (!analysis.isSafe) {
-            // STOP the data from leaving
             event.preventDefault();
             event.stopPropagation();
 
-            // Trigger the UI
             showModernWarning(analysis, event.target);
             
-            // Log to local storage for the Dashboard/Popup
-            chrome.storage.local.get(['stats'], (result) => {
-                let stats = result.stats || { total: 0 };
-                stats.total++;
-                chrome.storage.local.set({ stats: stats });
+            // --- UPDATED LOGGING LOGIC ---
+            // --- UPDATED LOGGING LOGIC ---
+    try {
+    if (chrome.runtime && chrome.runtime.id) {
+        chrome.storage.local.get(['stats', 'detailedLogs'], (result) => {
+            if (chrome.runtime.lastError) return; // Exit if context is lost
+
+            let stats = result.stats || { total: 0, types: {} };
+            let logs = result.detailedLogs || [];
+
+            stats.total++;
+            analysis.matchesFound.forEach(type => {
+                stats.types[type] = (stats.types[type] || 0) + 1;
             });
+
+            const newLog = {
+                time: new Date().toLocaleString(),
+                type: analysis.matchesFound.join(', '),
+                platform: window.location.hostname.replace('www.', ''),
+                status: "Blocked & Redacted"
+            };
+            logs.push(newLog);
+
+            chrome.storage.local.set({ stats: stats, detailedLogs: logs });
+        });
+    }
+    } catch (e) {
+    console.log("SentinelGate: Extension context invalidated. Please refresh the page.");
+}
         }
     }
 }, true);
