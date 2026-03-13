@@ -1,33 +1,100 @@
-// 1. Define what "Sensitive Data" looks like (Regex)
+/**
+ * SentinelGate: content.js
+ * Final Hackathon-Ready Version
+ */
+
+// 1. Defined Sensitive Patterns (Regex) - Must be at the top
 const SENSITIVE_PATTERNS = {
     creditCard: /\b(?:\d[ -]*?){13,16}\b/g,
     awsKey: /AKIA[0-9A-Z]{16}/g,
-    email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
+    email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+    ipv4: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g,
+    proprietaryMarkers: /(INTERNAL_ONLY|CONFIDENTIAL|PROPERTY_OF_ACME|DO_NOT_DISTRIBUTE)/gi,
+    dbConnection: /(mongodb\+srv|postgres|mysql):\/\/[^\s]+/gi,
+    highEntropySecret: /['"][a-zA-Z0-9]{32,128}['"]/g
 };
 
-// 2. Function to scan the text
-function scanText(text) {
-    for (let key in SENSITIVE_PATTERNS) {
-        if (SENSITIVE_PATTERNS[key].test(text)) {
-            return { found: true, type: key };
+// 2. The Redaction Engine
+function scanAndRedact(text) {
+    let matchesFound = [];
+    let redactedText = text;
+
+    for (let type in SENSITIVE_PATTERNS) {
+        // Reset regex index for global flags
+        SENSITIVE_PATTERNS[type].lastIndex = 0; 
+        
+        if (SENSITIVE_PATTERNS[type].test(text)) {
+            matchesFound.push(type);
+            redactedText = redactedText.replace(SENSITIVE_PATTERNS[type], `[REDACTED_${type.toUpperCase()}]`);
         }
     }
-    return { found: false };
+    return { isSafe: matchesFound.length === 0, redactedText, matchesFound };
 }
 
-// 3. Intercept the "Send" action
-// Note: AI sites change their button IDs often. We look for 'Enter' key as a generic start.
-window.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
-        const activeElement = document.activeElement;
-        const userInput = activeElement.innerText || activeElement.value;
+// 3. The Modern UI Overlay Logic
+function showModernWarning(analysis, targetElement) {
+    // Remove existing overlay if present
+    const existing = document.getElementById('sentinel-overlay');
+    if (existing) existing.remove();
 
-        const result = scanText(userInput);
-        
-        if (result.found) {
-            event.preventDefault(); // STOP the message from sending
+    const overlay = document.createElement('div');
+    overlay.id = 'sentinel-overlay';
+    overlay.className = 'sentinel-warning-overlay'; // Uses your styles.css
+    
+    // Inline styles as backup for hackathon stability
+    overlay.setAttribute('style', `
+        position: fixed; top: 20px; right: 20px; background: #1e293b; color: white; 
+        padding: 20px; border-radius: 12px; border: 2px solid #ef4444; z-index: 100000; 
+        width: 320px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); font-family: sans-serif;
+    `);
+
+    overlay.innerHTML = `
+        <strong style="display:block; color: #ef4444; margin-bottom: 8px;">🚨 PRIVACY VIOLATION</strong>
+        <p style="font-size: 13px; margin: 0 0 15px 0;">We detected: <b>${analysis.matchesFound.join(', ')}</b>. Exfiltration paused.</p>
+        <button id="sendRedacted" style="background: #ef4444; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold;">Send Redacted Version</button>
+        <button id="cancelSend" style="background: transparent; color: #94a3b8; border: none; margin-top: 10px; cursor: pointer; width: 100%; font-size: 12px;">Cancel and Edit</button>
+    `;
+    
+    document.body.appendChild(overlay);
+
+    // Handle Redaction Choice
+    document.getElementById('sendRedacted').onclick = () => {
+        if (targetElement.tagName === 'TEXTAREA' || targetElement.tagName === 'INPUT') {
+            targetElement.value = analysis.redactedText;
+        } else {
+            targetElement.innerText = analysis.redactedText;
+        }
+        overlay.remove();
+        alert("Text sanitized. You can now press Enter again to send safely.");
+    };
+
+    document.getElementById('cancelSend').onclick = () => overlay.remove();
+}
+
+// 4. Main Event Interceptor
+window.addEventListener('keydown', (event) => {
+    const isTextArea = event.target.tagName === 'TEXTAREA' || 
+                       event.target.role === 'textbox' || 
+                       event.target.contentEditable === 'true';
+    
+    if (isTextArea && event.key === 'Enter' && !event.shiftKey) {
+        const userInput = event.target.innerText || event.target.value;
+        const analysis = scanAndRedact(userInput);
+
+        if (!analysis.isSafe) {
+            // STOP the data from leaving
+            event.preventDefault();
             event.stopPropagation();
-            alert(`⚠️ SECURITY ALERT: We detected a ${result.type} in your prompt. Please remove it before sending.`);
+
+            // Trigger the UI
+            showModernWarning(analysis, event.target);
+            
+            // Log to local storage for the Dashboard/Popup
+            chrome.storage.local.get(['stats'], (result) => {
+                let stats = result.stats || { total: 0 };
+                stats.total++;
+                chrome.storage.local.set({ stats: stats });
+            });
         }
     }
-}, true); // The 'true' ensures we catch the event before the website does
+}, true);
