@@ -3,3 +3,34 @@
     border: 3px solid #ff4d4d !important;
     background-color: #fff2f2 !important;
 }
+
+/* Injected UI Overlay */
+.sentinel-warning-overlay {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 99999;
+    background: #7f1d1d;
+    color: #fecaca;
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #ef4444;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    width: 320px;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
+.sentinel-btn-primary {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-top: 10px;
+    cursor: pointer;
+}
