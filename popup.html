@@ -2,27 +2,52 @@
 <html>
 <head>
   <style>
-    body { width: 300px; font-family: 'Segoe UI', sans-serif; background: #0f172a; color: white; padding: 15px; }
+    body { width: 300px; font-family: 'Segoe UI', sans-serif; background: #0f172a; color: white; padding: 15px; margin: 0; }
     .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 10px; }
     .status-good { color: #22c55e; font-weight: bold; }
-    .stat-card { background: #1e293b; padding: 10px; border-radius: 8px; margin-top: 10px; }
-    .stat-num { font-size: 24px; color: #38bdf8; display: block; }
-    button { width: 100%; background: #3b82f6; color: white; border: none; padding: 10px; border-radius: 5px; margin-top: 15px; cursor: pointer; }
+    .stat-card { background: #1e293b; padding: 12px; border-radius: 8px; margin-top: 10px; }
+    .stat-num { font-size: 24px; color: #38bdf8; display: block; margin-bottom: 4px; }
+    .stat-row { display: flex; justify-content: space-between; margin-top: 6px; font-size: 13px; }
+    .stat-label { color: #94a3b8; }
+    button { width: 100%; background: #3b82f6; color: white; border: none; padding: 12px; border-radius: 6px; margin-top: 15px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+    button:hover { background: #2563eb; }
   </style>
 </head>
 <body>
   <div class="header">
-    <span>SentinelGate</span>
-    <span class="status-good">● ACTIVE</span>
+    <span>PrivacyGuard AI Protector</span>
+    <span class="status-good">ACTIVE</span>
   </div>
+
   <div class="stat-card">
     <span class="stat-num" id="leakCount">0</span>
-    <small>Data Leaks Blocked Today</small>
+    <small style="color: #94a3b8;">Data Leaks Blocked Today</small>
   </div>
+
   <div class="stat-card">
-    <small>Current Protection Level:</small>
-    <strong style="color: #f59e0b;">Maximum (Zero-Trust)</strong>
+    <div class="stat-row">
+      <span class="stat-label">API Keys Blocked:</span>
+      <strong id="api-keys-blocked" style="color: #ef4444;">0</strong>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">PII (Emails) Blocked:</span>
+      <strong id="pii-blocked" style="color: #f97316;">0</strong>
+    </div>
   </div>
+
+  <div class="stat-card">
+    <div class="stat-row">
+      <span class="stat-label">Security Rank:</span>
+      <strong id="guard-rank" style="color: #a855f7;">Beginner Guardian</strong>
+    </div>
+    <div class="stat-row" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #334155;">
+      <span class="stat-label">Protection Level:</span>
+      <strong style="color: #f59e0b;">Maximum (Zero-Trust)</strong>
+    </div>
+  </div>
+
   <button id="viewLogs">View Detailed Logs</button>
+
+  <script src="popup.js"></script>
 </body>
 </html>
