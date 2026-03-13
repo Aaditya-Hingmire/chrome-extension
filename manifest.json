@@ -19,6 +19,7 @@
     }
   ],
   "action": {
-    "default_title": "Status"
+    "default_popup": "popup.html"
   }
 }
+
