@@ -1,6 +1,6 @@
 /**
  * SentinelGate: content.js
- * Final Hackathon-Ready Version
+ * Final Hackathon-Ready Version (Updated with Mouse Click Interception)
  */
 
 // 1. Defined Sensitive Patterns (Regex) - Must be at the top
@@ -31,7 +31,38 @@ function scanAndRedact(text) {
     return { isSafe: matchesFound.length === 0, redactedText, matchesFound };
 }
 
-// 3. The Modern UI Overlay Logic
+// 3. Centralized Logging Function
+function logViolation(analysis) {
+    try {
+        if (chrome.runtime && chrome.runtime.id) {
+            chrome.storage.local.get(['stats', 'detailedLogs'], (result) => {
+                if (chrome.runtime.lastError) return;
+
+                let stats = result.stats || { total: 0, types: {} };
+                let logs = result.detailedLogs || [];
+
+                stats.total++;
+                analysis.matchesFound.forEach(type => {
+                    stats.types[type] = (stats.types[type] || 0) + 1;
+                });
+
+                const newLog = {
+                    time: new Date().toLocaleString(),
+                    type: analysis.matchesFound.join(', '),
+                    platform: window.location.hostname.replace('www.', ''),
+                    status: "Blocked & Redacted"
+                };
+                logs.push(newLog);
+
+                chrome.storage.local.set({ stats: stats, detailedLogs: logs });
+            });
+        }
+    } catch (e) {
+        console.log("SentinelGate: Extension context invalidated. Please refresh the page.");
+    }
+}
+
+// 4. The Modern UI Overlay Logic
 function showModernWarning(analysis, targetElement) {
     // Remove existing overlay if present
     const existing = document.getElementById('sentinel-overlay');
@@ -65,14 +96,45 @@ function showModernWarning(analysis, targetElement) {
             targetElement.innerText = analysis.redactedText;
         }
         overlay.remove();
-        alert("Text sanitized. You can now press Enter again to send safely.");
+        alert("Text sanitized. You can now press Enter or click Send safely.");
     };
 
     document.getElementById('cancelSend').onclick = () => overlay.remove();
 }
 
-// 4. Main Event Interceptor
-// 4. Main Event Interceptor
+// 5. Centralized Submission Handler
+function processSubmission(event, userInput, inputElement) {
+    if (!userInput) return true;
+    
+    const analysis = scanAndRedact(userInput);
+
+    if (!analysis.isSafe) {
+        // Stop the event dead in its tracks
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        showModernWarning(analysis, inputElement);
+        logViolation(analysis);
+        return false; // Submission blocked
+    }
+    return true; // Submission safe
+}
+
+// ==========================================
+// 6. EVENT INTERCEPTORS (The Fix)
+// ==========================================
+
+let activeTextInput = null;
+
+// A. Track the active text input box dynamically
+document.addEventListener('input', (e) => {
+    if (e.target.tagName === 'TEXTAREA' || e.target.role === 'textbox' || e.target.isContentEditable) {
+        activeTextInput = e.target;
+    }
+}, true);
+
+// B. Enter Key Interceptor
 window.addEventListener('keydown', (event) => {
     const isTextArea = event.target.tagName === 'TEXTAREA' || 
                        event.target.role === 'textbox' || 
@@ -80,43 +142,41 @@ window.addEventListener('keydown', (event) => {
     
     if (isTextArea && event.key === 'Enter' && !event.shiftKey) {
         const userInput = event.target.innerText || event.target.value;
-        const analysis = scanAndRedact(userInput);
-
-        if (!analysis.isSafe) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            showModernWarning(analysis, event.target);
-            
-            // --- UPDATED LOGGING LOGIC ---
-            // --- UPDATED LOGGING LOGIC ---
-    try {
-    if (chrome.runtime && chrome.runtime.id) {
-        chrome.storage.local.get(['stats', 'detailedLogs'], (result) => {
-            if (chrome.runtime.lastError) return; // Exit if context is lost
-
-            let stats = result.stats || { total: 0, types: {} };
-            let logs = result.detailedLogs || [];
-
-            stats.total++;
-            analysis.matchesFound.forEach(type => {
-                stats.types[type] = (stats.types[type] || 0) + 1;
-            });
-
-            const newLog = {
-                time: new Date().toLocaleString(),
-                type: analysis.matchesFound.join(', '),
-                platform: window.location.hostname.replace('www.', ''),
-                status: "Blocked & Redacted"
-            };
-            logs.push(newLog);
-
-            chrome.storage.local.set({ stats: stats, detailedLogs: logs });
-        });
+        processSubmission(event, userInput, event.target);
     }
-    } catch (e) {
-    console.log("SentinelGate: Extension context invalidated. Please refresh the page.");
-}
+}, true); // Use capture phase
+
+// C. Mouse Click Interceptor (Catches Send Buttons)
+['mousedown', 'click'].forEach(eventType => {
+    window.addEventListener(eventType, (event) => {
+        let target = event.target;
+        let isSendAction = false;
+
+        // Traverse up the DOM tree to see if the user clicked inside a button
+        while (target && target !== document.body) {
+            if (target.tagName === 'BUTTON' || target.role === 'button') {
+                const aria = (target.getAttribute('aria-label') || '').toLowerCase();
+                const testId = (target.getAttribute('data-testid') || '').toLowerCase();
+                const title = (target.getAttribute('title') || '').toLowerCase();
+                
+                // Identify if the button is likely a 'Send' button based on standard attributes
+                if (aria.includes('send') || testId.includes('send') || 
+                    title.includes('send') || aria.includes('run') || target.type === 'submit') {
+                    isSendAction = true;
+                    break;
+                }
+            }
+            target = target.parentElement;
         }
-    }
-}, true);
+
+        if (isSendAction) {
+            // Find the active text box
+            const inputElement = activeTextInput || document.querySelector('textarea, [contenteditable="true"], [role="textbox"]');
+            
+            if (inputElement) {
+                const userInput = inputElement.innerText || inputElement.value || inputElement.textContent;
+                processSubmission(event, userInput, inputElement);
+            }
+        }
+    }, true); // Use capture phase to intercept before React handles it
+});
