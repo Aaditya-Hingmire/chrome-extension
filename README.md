@@ -1,8 +1,9 @@
 # PrivacyGuard AI Protector 🛡️
 
+# chrome-extension
+
 # Demo Video Link - https://youtu.be/-jVMXwOHgB0
 
-# chrome-extension
 PrivacyGuard (chrome extension) project for Ciphathon '26
 
 **PrivacyGuard AI Protector** is a Chrome extension built to prevent the accidental leakage of Personally Identifiable Information (PII), sensitive credentials, and proprietary corporate data to public Large Language Models (LLMs). 
