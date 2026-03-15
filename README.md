@@ -1,5 +1,7 @@
 # PrivacyGuard AI Protector 🛡️
 
+# Demo Video Link - https://youtu.be/-jVMXwOHgB0
+
 # chrome-extension
 PrivacyGuard (chrome extension) project for Ciphathon '26
 
